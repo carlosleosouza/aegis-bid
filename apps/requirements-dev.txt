@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest==9.1.1
+fakeredis==2.39.0
+lupa==2.8
+PyYAML==6.0.3

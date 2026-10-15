@@ -1,0 +1,30 @@
+# Troca a estratégia do Rollout: acrescenta o portão de pré-voo (budget) e a
+# análise contínua do canary. (Listas são SUBSTITUÍDAS inteiras em CRDs, por isso
+# repetimos todos os passos.)
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: bid-svc
+spec:
+  strategy:
+    canary:
+      steps:
+        # PORTÃO DE PRÉ-VOO: se o error budget restante for < 20%, o rollout
+        # nem começa. Reliability antes de feature.
+        - analysis:
+            templates:
+              - templateName: error-budget-available
+        - setWeight: 25
+        - pause: {duration: 60s}
+        - setWeight: 50
+        - pause: {duration: 60s}
+      # ANÁLISE EM BACKGROUND: roda durante todo o rollout a partir do passo 1.
+      # Se falhar, o Argo Rollouts aborta e volta para a versão estável.
+      analysis:
+        startingStep: 1
+        templates:
+          - templateName: canary-health
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest

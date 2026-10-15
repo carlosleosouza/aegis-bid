@@ -1,0 +1,21 @@
+# Overlay do cluster PRIMÁRIO. Cada fase do guia "liga" uma linha abaixo:
+# `make enable PHASE=3` remove o "#faseN# " do começo das linhas marcadas.
+# Isso é de propósito: ligar um recurso é um COMMIT no Git, não um comando.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+components:
+#fase3# - ../../components/monitoring
+#fase4# - ../../components/canary-analysis
+#fase5# - ../../components/autoscaling
+#fase7# - ../../components/network-policies
+#fase8# - ../../components/redis-expose
+# O CI atualiza as tags abaixo (via PR). Os comentários "# tag:" são âncoras do sed.
+images:
+  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/auction
+    newTag: dev # tag:auction
+  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/bid
+    newTag: dev # tag:bid
+  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/settlement
+    newTag: dev # tag:settlement

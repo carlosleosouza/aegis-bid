@@ -1,0 +1,31 @@
+# FASE 7: Kyverno (policy engine) nos dois clusters.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kyverno
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchExpressions:
+            - {key: aegis.io/env, operator: In, values: [prod, dr]}
+  template:
+    metadata:
+      name: 'kyverno-{{ index .metadata.labels "aegis.io/env" }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://kyverno.github.io/kyverno
+        chart: kyverno
+        targetRevision: "*"   # FIXE a versão depois do primeiro sync saudável
+        helm:
+          releaseName: kyverno
+      destination:
+        server: '{{ .server }}'
+        namespace: kyverno
+      syncPolicy:
+        automated: {prune: true, selfHeal: true}
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]

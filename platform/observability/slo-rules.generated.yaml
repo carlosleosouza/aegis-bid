@@ -1,0 +1,235 @@
+# GERADO por tools/slo_gen.py a partir de slos.yaml. NÃO edite à mão.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: aegis-slo-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: aegis-bid
+spec:
+  groups:
+  - name: aegis-slo-bid-availability
+    interval: 30s
+    rules:
+    - record: aegis:sli_error:ratio_rate5m
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[5m])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[5m]))
+      labels:
+        slo: bid-availability
+    - record: aegis:sli_error:ratio_rate30m
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[30m])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[30m]))
+      labels:
+        slo: bid-availability
+    - record: aegis:sli_error:ratio_rate1h
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[1h])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[1h]))
+      labels:
+        slo: bid-availability
+    - record: aegis:sli_error:ratio_rate2h
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[2h])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[2h]))
+      labels:
+        slo: bid-availability
+    - record: aegis:sli_error:ratio_rate6h
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[6h])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[6h]))
+      labels:
+        slo: bid-availability
+    - record: aegis:sli_error:ratio_rate1d
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[1d])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[1d]))
+      labels:
+        slo: bid-availability
+    - record: aegis:sli_error:ratio_rate3d
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[3d])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[3d]))
+      labels:
+        slo: bid-availability
+    - record: aegis:sli_error:ratio_rate30d
+      expr: sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[30d])) / sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[30d]))
+      labels:
+        slo: bid-availability
+    - record: aegis:error_budget_remaining:ratio
+      expr: 1 - (aegis:sli_error:ratio_rate30d{slo="bid-availability"} / 0.001)
+      labels:
+        slo: bid-availability
+    - alert: AegisErrorBudgetFastBurn
+      expr: aegis:sli_error:ratio_rate1h{slo="bid-availability"} > 0.0144 and aegis:sli_error:ratio_rate5m{slo="bid-availability"} > 0.0144
+      for: 2m
+      labels:
+        severity: page
+        slo: bid-availability
+      annotations:
+        summary: 'SLO bid-availability: budget queimando 14.4x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.0144 nas janelas 1h e 5m. Objetivo: 99.9%. Disponibilidade da API de lances (POST /api/bids).'
+    - alert: AegisErrorBudgetModerateBurn
+      expr: aegis:sli_error:ratio_rate6h{slo="bid-availability"} > 0.006 and aegis:sli_error:ratio_rate30m{slo="bid-availability"} > 0.006
+      for: 2m
+      labels:
+        severity: page
+        slo: bid-availability
+      annotations:
+        summary: 'SLO bid-availability: budget queimando 6x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.006 nas janelas 6h e 30m. Objetivo: 99.9%. Disponibilidade da API de lances (POST /api/bids).'
+    - alert: AegisErrorBudgetSlowBurn
+      expr: aegis:sli_error:ratio_rate1d{slo="bid-availability"} > 0.003 and aegis:sli_error:ratio_rate2h{slo="bid-availability"} > 0.003
+      for: 15m
+      labels:
+        severity: ticket
+        slo: bid-availability
+      annotations:
+        summary: 'SLO bid-availability: budget queimando 3x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.003 nas janelas 1d e 2h. Objetivo: 99.9%. Disponibilidade da API de lances (POST /api/bids).'
+    - alert: AegisErrorBudgetVerySlowBurn
+      expr: aegis:sli_error:ratio_rate3d{slo="bid-availability"} > 0.001 and aegis:sli_error:ratio_rate6h{slo="bid-availability"} > 0.001
+      for: 15m
+      labels:
+        severity: ticket
+        slo: bid-availability
+      annotations:
+        summary: 'SLO bid-availability: budget queimando 1x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.001 nas janelas 3d e 6h. Objetivo: 99.9%. Disponibilidade da API de lances (POST /api/bids).'
+  - name: aegis-slo-bid-latency
+    interval: 30s
+    rules:
+    - record: aegis:sli_error:ratio_rate5m
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[5m])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[5m])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:sli_error:ratio_rate30m
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[30m])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[30m])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:sli_error:ratio_rate1h
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[1h])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[1h])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:sli_error:ratio_rate2h
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[2h])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[2h])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:sli_error:ratio_rate6h
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[6h])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[6h])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:sli_error:ratio_rate1d
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[1d])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[1d])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:sli_error:ratio_rate3d
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[3d])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[3d])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:sli_error:ratio_rate30d
+      expr: 1 - ( sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[30d])) / sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[30d])) )
+      labels:
+        slo: bid-latency
+    - record: aegis:error_budget_remaining:ratio
+      expr: 1 - (aegis:sli_error:ratio_rate30d{slo="bid-latency"} / 0.01)
+      labels:
+        slo: bid-latency
+    - alert: AegisErrorBudgetFastBurn
+      expr: aegis:sli_error:ratio_rate1h{slo="bid-latency"} > 0.144 and aegis:sli_error:ratio_rate5m{slo="bid-latency"} > 0.144
+      for: 2m
+      labels:
+        severity: page
+        slo: bid-latency
+      annotations:
+        summary: 'SLO bid-latency: budget queimando 14.4x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.144 nas janelas 1h e 5m. Objetivo: 99%. Latência da API de lances: 99% em até 300 ms.'
+    - alert: AegisErrorBudgetModerateBurn
+      expr: aegis:sli_error:ratio_rate6h{slo="bid-latency"} > 0.06 and aegis:sli_error:ratio_rate30m{slo="bid-latency"} > 0.06
+      for: 2m
+      labels:
+        severity: page
+        slo: bid-latency
+      annotations:
+        summary: 'SLO bid-latency: budget queimando 6x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.06 nas janelas 6h e 30m. Objetivo: 99%. Latência da API de lances: 99% em até 300 ms.'
+    - alert: AegisErrorBudgetSlowBurn
+      expr: aegis:sli_error:ratio_rate1d{slo="bid-latency"} > 0.03 and aegis:sli_error:ratio_rate2h{slo="bid-latency"} > 0.03
+      for: 15m
+      labels:
+        severity: ticket
+        slo: bid-latency
+      annotations:
+        summary: 'SLO bid-latency: budget queimando 3x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.03 nas janelas 1d e 2h. Objetivo: 99%. Latência da API de lances: 99% em até 300 ms.'
+    - alert: AegisErrorBudgetVerySlowBurn
+      expr: aegis:sli_error:ratio_rate3d{slo="bid-latency"} > 0.01 and aegis:sli_error:ratio_rate6h{slo="bid-latency"} > 0.01
+      for: 15m
+      labels:
+        severity: ticket
+        slo: bid-latency
+      annotations:
+        summary: 'SLO bid-latency: budget queimando 1x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.01 nas janelas 3d e 6h. Objetivo: 99%. Latência da API de lances: 99% em até 300 ms.'
+  - name: aegis-slo-settlement-freshness
+    interval: 30s
+    rules:
+    - record: aegis:sli_error:ratio_rate5m
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[5m])) / sum(rate(aegis_settlement_lag_seconds_count[5m])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:sli_error:ratio_rate30m
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[30m])) / sum(rate(aegis_settlement_lag_seconds_count[30m])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:sli_error:ratio_rate1h
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[1h])) / sum(rate(aegis_settlement_lag_seconds_count[1h])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:sli_error:ratio_rate2h
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[2h])) / sum(rate(aegis_settlement_lag_seconds_count[2h])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:sli_error:ratio_rate6h
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[6h])) / sum(rate(aegis_settlement_lag_seconds_count[6h])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:sli_error:ratio_rate1d
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[1d])) / sum(rate(aegis_settlement_lag_seconds_count[1d])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:sli_error:ratio_rate3d
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[3d])) / sum(rate(aegis_settlement_lag_seconds_count[3d])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:sli_error:ratio_rate30d
+      expr: 1 - ( sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[30d])) / sum(rate(aegis_settlement_lag_seconds_count[30d])) )
+      labels:
+        slo: settlement-freshness
+    - record: aegis:error_budget_remaining:ratio
+      expr: 1 - (aegis:sli_error:ratio_rate30d{slo="settlement-freshness"} / 0.01)
+      labels:
+        slo: settlement-freshness
+    - alert: AegisErrorBudgetFastBurn
+      expr: aegis:sli_error:ratio_rate1h{slo="settlement-freshness"} > 0.144 and aegis:sli_error:ratio_rate5m{slo="settlement-freshness"} > 0.144
+      for: 2m
+      labels:
+        severity: page
+        slo: settlement-freshness
+      annotations:
+        summary: 'SLO settlement-freshness: budget queimando 14.4x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.144 nas janelas 1h e 5m. Objetivo: 99%. 99% dos lances liquidados em até 2 s após aceitos.'
+    - alert: AegisErrorBudgetModerateBurn
+      expr: aegis:sli_error:ratio_rate6h{slo="settlement-freshness"} > 0.06 and aegis:sli_error:ratio_rate30m{slo="settlement-freshness"} > 0.06
+      for: 2m
+      labels:
+        severity: page
+        slo: settlement-freshness
+      annotations:
+        summary: 'SLO settlement-freshness: budget queimando 6x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.06 nas janelas 6h e 30m. Objetivo: 99%. 99% dos lances liquidados em até 2 s após aceitos.'
+    - alert: AegisErrorBudgetSlowBurn
+      expr: aegis:sli_error:ratio_rate1d{slo="settlement-freshness"} > 0.03 and aegis:sli_error:ratio_rate2h{slo="settlement-freshness"} > 0.03
+      for: 15m
+      labels:
+        severity: ticket
+        slo: settlement-freshness
+      annotations:
+        summary: 'SLO settlement-freshness: budget queimando 3x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.03 nas janelas 1d e 2h. Objetivo: 99%. 99% dos lances liquidados em até 2 s após aceitos.'
+    - alert: AegisErrorBudgetVerySlowBurn
+      expr: aegis:sli_error:ratio_rate3d{slo="settlement-freshness"} > 0.01 and aegis:sli_error:ratio_rate6h{slo="settlement-freshness"} > 0.01
+      for: 15m
+      labels:
+        severity: ticket
+        slo: settlement-freshness
+      annotations:
+        summary: 'SLO settlement-freshness: budget queimando 1x mais rápido que o sustentável'
+        description: 'Taxa de erro acima de 0.01 nas janelas 3d e 6h. Objetivo: 99%. 99% dos lances liquidados em até 2 s após aceitos.'

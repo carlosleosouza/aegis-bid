@@ -1,0 +1,21 @@
+# Cluster de DR (standby, estratégia "pilot light"): menor que o prod e sem a stack
+# completa de observabilidade. Os serviços ficam com 0 réplicas até o failover.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: aegis-dr
+servers: 1
+agents: 1
+network: aegis-net
+ports:
+  # Acesso direto ao Traefik do DR:
+  #   curl -H 'Host: aegis.localhost' http://localhost:8082/api/auctions
+  - port: 8082:80
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      - arg: --tls-san=k3d-aegis-dr-serverlb
+        nodeFilters:
+          - server:*

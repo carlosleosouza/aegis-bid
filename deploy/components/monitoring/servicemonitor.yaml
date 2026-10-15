@@ -1,0 +1,22 @@
+# Ensina o Prometheus a coletar /metrics dos 3 serviços.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: aegis
+  labels: {app.kubernetes.io/part-of: aegis-bid}
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/part-of: aegis-bid}
+  namespaceSelector:
+    matchNames: [aegis]
+  # Copia labels do POD para as séries. `rollouts-pod-template-hash` é o que
+  # permite a AnalysisTemplate olhar SÓ as métricas dos pods canary (fase 4).
+  podTargetLabels: [rollouts-pod-template-hash]
+  endpoints:
+    - port: http          # o Service do Redis não tem porta "http": é ignorado
+      path: /metrics
+      interval: 10s
+      # honorLabels: o label `service` já vem DENTRO da métrica (definido pela
+      # app). Sem isto, o Prometheus o renomearia para exported_service e as
+      # consultas de SLO deixariam de casar.
+      honorLabels: true

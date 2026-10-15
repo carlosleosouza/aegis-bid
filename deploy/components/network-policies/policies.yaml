@@ -1,0 +1,123 @@
+# NetworkPolicies: "default deny" + liberações mínimas (princípio do menor privilégio).
+# O k3s (flannel + controlador do kube-router) aplica NetworkPolicy de verdade.
+#
+# Como testar que funciona (fase 7): um pod qualquer NÃO consegue falar com o Redis:
+#   kubectl -n aegis run teste --rm -it --image=busybox --restart=Never -- nc -zv redis 6379
+#
+# ATENÇÃO (fase 8): para o Redis do DR replicar do primário via NodePort, o tráfego
+# chega de FORA do cluster. Se ligar estas políticas junto com a replicação,
+# acrescente ao "redis-ingress" um `ipBlock` com o CIDR da rede Docker aegis-net
+# (descubra com: docker network inspect aegis-net | grep Subnet).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-all}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-dns-egress}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-ingress-from-traefik}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app, operator: In, values: [bid-svc, auction-svc]}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+      ports:
+        - {protocol: TCP, port: 8000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-prometheus-scrape}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/part-of: aegis-bid}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+      ports:
+        - {protocol: TCP, port: 8000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: bid-svc-egress}
+spec:
+  podSelector:
+    matchLabels: {app: bid-svc}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app: redis}}}]
+      ports: [{protocol: TCP, port: 6379}]
+    - to: [{podSelector: {matchLabels: {app: auction-svc}}}]
+      ports: [{protocol: TCP, port: 8000}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: auction-svc-egress}
+spec:
+  podSelector:
+    matchLabels: {app: auction-svc}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app: redis}}}]
+      ports: [{protocol: TCP, port: 6379}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: settlement-svc-egress}
+spec:
+  podSelector:
+    matchLabels: {app: settlement-svc}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app: redis}}}]
+      ports: [{protocol: TCP, port: 6379}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-bid-to-auction}
+spec:
+  podSelector:
+    matchLabels: {app: auction-svc}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: bid-svc}}}]
+      ports: [{protocol: TCP, port: 8000}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: redis-ingress}
+spec:
+  podSelector:
+    matchLabels: {app: redis}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - {key: app, operator: In, values: [bid-svc, auction-svc, settlement-svc]}
+        # o KEDA (namespace keda) consulta o tamanho da fila direto no Redis
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: keda}
+      ports: [{protocol: TCP, port: 6379}]

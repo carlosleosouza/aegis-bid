@@ -1,0 +1,49 @@
+# Catálogo de experimentos. REGRA DE OURO: a hipótese é escrita ANTES de rodar.
+# `steady_state` define o que significa "o sistema continua saudável" durante a falha.
+experiments:
+  - id: kill-bid-pod
+    manifest: chaos/experiments/kill-bid-pod.yaml
+    duration_seconds: 60
+    hypothesis: >-
+      Se matarmos 1 dos pods do bid-svc durante carga, as outras réplicas e o
+      readinessProbe mantêm a taxa de erro abaixo de 1% e o p99 abaixo de 300 ms.
+    steady_state: {max_error_ratio: 0.01, max_p99_seconds: 0.3}
+
+  - id: kill-settlement-pod
+    manifest: chaos/experiments/kill-settlement-pod.yaml
+    duration_seconds: 60
+    hypothesis: >-
+      Se matarmos 1 pod do settlement-svc, a API de lances não é afetada (fila
+      desacopla produtor e consumidor) e nenhum lance é perdido nem aplicado
+      duas vezes (XAUTOCLAIM + idempotência). Verificação de perda/duplicidade
+      é manual: veja a seção da fase 6 do guia.
+    steady_state: {max_error_ratio: 0.01, max_p99_seconds: 0.3}
+
+  - id: auction-svc-outage
+    manifest: chaos/experiments/auction-svc-outage.yaml
+    duration_seconds: 60
+    hypothesis: >-
+      Com o auction-svc fora do ar por 60 s, o bid-svc continua aceitando lances
+      de leilões já conhecidos (cache de ends_at_ms), com erro abaixo de 1%.
+    steady_state: {max_error_ratio: 0.01, max_p99_seconds: 0.3}
+
+  - id: bid-latency-500ms
+    manifest: chaos/experiments/bid-latency-500ms.yaml
+    duration_seconds: 60
+    hypothesis: >-
+      EXPERIMENTO DE CONTROLE. Com +500 ms de latência de rede no bid-svc,
+      esperamos que o p99 SAIA do limite de 300 ms. O objetivo é provar que o
+      SLO de latência e os alertas de burn rate DETECTAM a degradação. Aqui,
+      "hipótese refutada" significa que o sistema se comportou como previsto
+      pelo SLO (a premissa de saúde foi violada e o alerta deve disparar).
+    steady_state: {max_error_ratio: 0.01, max_p99_seconds: 0.3}
+
+  - id: bid-redis-partition
+    manifest: chaos/experiments/bid-redis-partition.yaml
+    duration_seconds: 45
+    hypothesis: >-
+      Com o bid-svc isolado do Redis, ele deve FALHAR RÁPIDO (503 em até ~1 s,
+      graças aos timeouts curtos) em vez de pendurar conexões. Erros são
+      esperados; o limite de erro está aberto (100%) e o que validamos é o p99
+      baixo e a recuperação automática após o fim da partição.
+    steady_state: {max_error_ratio: 1.0, max_p99_seconds: 1.5}

@@ -1,0 +1,39 @@
+# Definição dos SLOs. Fonte da verdade: edite AQUI e rode `make slo-rules`.
+#
+# O placeholder {window} é substituído por 5m, 30m, 1h... pelo gerador.
+# Cada `error_ratio` é a FRAÇÃO DE EVENTOS RUINS (0 a 1) na janela.
+slos:
+  # SLO 1 - Disponibilidade: 99,9% dos lances não podem falhar com 5xx.
+  # Orçamento de erro: 0,1% (~43 min de indisponibilidade por 30 dias).
+  - id: bid-availability
+    objective: 99.9
+    description: "Disponibilidade da API de lances (POST /api/bids)."
+    error_ratio: |
+      sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[{window}]))
+      /
+      sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[{window}]))
+
+  # SLO 2 - Latência: 99% dos lances respondem em até 300 ms
+  # (equivale a "p99 < 300 ms"). SLI = 1 - fração que coube no bucket le="0.3".
+  - id: bid-latency
+    objective: 99
+    description: "Latência da API de lances: 99% em até 300 ms."
+    error_ratio: |
+      1 - (
+        sum(rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",le="0.3"}[{window}]))
+        /
+        sum(rate(aegis_http_request_duration_seconds_count{service="bid-svc",route="/api/bids"}[{window}]))
+      )
+
+  # SLO 3 - Frescor da liquidação: 99% dos lances liquidados em até 2 s.
+  # Fica ruim quando a fila acumula (e é isso que o KEDA deve evitar).
+  # DESAFIO: criar um SLO 4 de "correção" (0 lances duplicados aplicados).
+  - id: settlement-freshness
+    objective: 99
+    description: "99% dos lances liquidados em até 2 s após aceitos."
+    error_ratio: |
+      1 - (
+        sum(rate(aegis_settlement_lag_seconds_bucket{le="2.0"}[{window}]))
+        /
+        sum(rate(aegis_settlement_lag_seconds_count[{window}]))
+      )

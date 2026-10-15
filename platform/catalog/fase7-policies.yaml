@@ -1,0 +1,31 @@
+# FASE 7: as políticas (ClusterPolicy) nos dois clusters.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: aegis-policies
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchExpressions:
+            - {key: aegis.io/env, operator: In, values: [prod, dr]}
+  template:
+    metadata:
+      name: 'aegis-policies-{{ index .metadata.labels "aegis.io/env" }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/__GITHUB_OWNER__/aegis-bid.git
+        targetRevision: main
+        path: platform/policies
+      destination:
+        server: '{{ .server }}'
+      syncPolicy:
+        automated: {prune: true, selfHeal: true}
+        syncOptions: [ServerSideApply=true, SkipDryRunOnMissingResource=true]
+        retry:
+          limit: 10
+          backoff: {duration: 15s, factor: 2, maxDuration: 5m}

@@ -1,0 +1,162 @@
+name: ci
+
+# Pipeline com cadeia de suprimentos (fase 1):
+#   testar -> construir -> ESCANEAR antes de publicar -> publicar -> SBOM -> ASSINAR
+#   -> abrir PR atualizando as tags no Git (o GitOps faz o deploy ao mesclar)
+#
+# IMPORTANTE: o nome do arquivo (ci.yml) e a branch (main) fazem parte da identidade
+# da assinatura que o Kyverno verifica (platform/policies/verify-signed-images.yaml).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Dependências
+        run: pip install -r apps/requirements-dev.txt yamllint
+      - name: Testes unitários
+        run: |
+          (cd apps && python -m pytest -q)
+          python -m pytest -q tools/tests
+      - name: Arquivos gerados estão em dia?
+        # Se alguém editar slos.yaml e esquecer de rodar `make slo-rules`, falha aqui.
+        run: |
+          make slo-rules
+          git diff --exit-code -- platform/observability || (echo "rode 'make slo-rules' e comite" && exit 1)
+      - name: yamllint
+        run: make lint
+      - name: Kustomize compila?
+        run: |
+          kubectl kustomize deploy/overlays/prod > /dev/null
+          kubectl kustomize deploy/overlays/dr > /dev/null
+
+  budget-gate:
+    # Só roda se você configurou a variável de repositório PROMETHEUS_URL e tem um
+    # runner self-hosted com acesso ao Prometheus (veja docs/fase-4-error-budget.md).
+    if: github.event_name == 'pull_request' && vars.PROMETHEUS_URL != ''
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Error Budget Gate
+        run: |
+          python3 tools/budget_gate.py --prom-url "${{ vars.PROMETHEUS_URL }}" \
+            ${{ startsWith(github.event.pull_request.title, 'fix') && '--is-fix' || '' }}
+
+  build:
+    needs: test
+    # `chore(deploy)` é o prefixo dos PRs que o próprio CI abre: sem este filtro, o
+    # merge de um PR de tag dispararia outro build (loop infinito).
+    if: github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'chore(deploy)')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # necessário para a assinatura keyless (OIDC -> Fulcio)
+    strategy:
+      matrix:
+        service: [auction, bid, settlement]
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"   # GHCR exige minúsculas
+          echo "image=ghcr.io/${owner}/aegis-bid/${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 1) Constrói LOCALMENTE (load) e escaneia ANTES de publicar: imagem
+      #    vulnerável nunca chega ao registry.
+      - name: Build (sem publicar)
+        uses: docker/build-push-action@v6
+        with:
+          context: apps
+          file: apps/Dockerfile
+          build-args: SERVICE=${{ matrix.service }}
+          load: true
+          tags: ${{ steps.meta.outputs.image }}:scan
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Trivy (falha em CRITICAL/HIGH com correção disponível)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image --exit-code 1 --severity CRITICAL,HIGH \
+            --ignore-unfixed "${{ steps.meta.outputs.image }}:scan"
+
+      # 2) Publica (reaproveita o cache: não reconstrói).
+      - name: Publicar
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: apps
+          file: apps/Dockerfile
+          build-args: SERVICE=${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+
+      # 3) SBOM: a lista de ingredientes. Responde "estou afetado pela CVE X?" em
+      #    segundos, sem reabrir imagem nenhuma.
+      - name: SBOM (Syft, formato SPDX)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/syft:latest \
+            "${{ steps.meta.outputs.image }}@${{ steps.push.outputs.digest }}" -o spdx-json > sbom.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom.spdx.json
+
+      # 4) Assinatura keyless (Sigstore). Assinamos o DIGEST, nunca a tag: a tag é
+      #    mutável, o digest identifica exatamente estes bytes.
+      - uses: sigstore/cosign-installer@v3
+      - name: Assinar imagem e anexar SBOM como atestado
+        run: |
+          ref="${{ steps.meta.outputs.image }}@${{ steps.push.outputs.digest }}"
+          cosign sign --yes "$ref"
+          cosign attest --yes --type spdxjson --predicate sbom.spdx.json "$ref"
+
+  update-manifests:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Atualiza as tags nos overlays
+        run: |
+          tag="sha-${GITHUB_SHA::7}"
+          for overlay in prod dr; do
+            f="deploy/overlays/${overlay}/kustomization.yaml"
+            for svc in auction bid settlement; do
+              sed -i -E "s|(newTag: )[^ ]+( # tag:${svc})|\1${tag}\2|" "$f"
+            done
+          done
+          git diff --stat
+      - name: Abre PR (merge do PR = deploy via Argo CD)
+        # Requer: Settings > Actions > General > "Allow GitHub Actions to create
+        # and approve pull requests".
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: ci/update-image-tags
+          title: "chore(deploy): imagens sha-${{ github.sha }}"
+          commit-message: "chore(deploy): atualiza tags das imagens"
+          body: |
+            Atualização automática das tags de imagem (commit ${{ github.sha }}).
+            Ao mesclar, o Argo CD faz o deploy (canary + análise de budget, a partir da fase 4).

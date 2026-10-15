@@ -1,0 +1,20 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: bid-redis-partition
+  namespace: aegis
+spec:
+  action: partition       # descarta todo o tráfego entre os dois grupos de pods
+  mode: all
+  duration: "45s"
+  direction: both
+  selector:
+    namespaces: [aegis]
+    labelSelectors:
+      app: bid-svc
+  target:
+    mode: all
+    selector:
+      namespaces: [aegis]
+      labelSelectors:
+        app: redis

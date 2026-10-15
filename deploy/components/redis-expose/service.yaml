@@ -1,0 +1,13 @@
+# Expõe o Redis do primário em uma NodePort para o Redis do DR replicar dele.
+# O DR acessa k3d-aegis-prod-server-0:30379 pela rede Docker aegis-net.
+# LAB ONLY: sem senha/TLS. Em produção: replicação autenticada e criptografada.
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-replication
+  labels: {app: redis, app.kubernetes.io/part-of: aegis-bid}
+spec:
+  type: NodePort
+  selector: {app: redis}
+  ports:
+    - {name: redis, port: 6379, targetPort: redis, nodePort: 30379}

@@ -1,0 +1,27 @@
+# Cluster primário (hub): roda o Argo CD e toda a stack de plataforma.
+# `make clusters` usa este arquivo. O porquê de cada opção: docs/fase-0-fundacao.md
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: aegis-prod
+servers: 1
+agents: 2
+# Rede Docker COMPARTILHADA com o DR. É ela que permite:
+#  1. o Argo CD (no prod) alcançar a API do DR (k3d-aegis-dr-serverlb:6443);
+#  2. o Redis do DR replicar do prod (k3d-aegis-prod-server-0:30379);
+#  3. o HAProxy de borda falar com os dois (…-serverlb:80).
+# `make network` cria a rede antes dos clusters.
+network: aegis-net
+ports:
+  # Acesso direto ao Traefik do prod, sem passar pela borda (útil para depurar):
+  #   curl -H 'Host: aegis.localhost' http://localhost:8081/api/auctions
+  - port: 8081:80
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      # Inclui o nome do load balancer nos SANs do certificado da API.
+      - arg: --tls-san=k3d-aegis-prod-serverlb
+        nodeFilters:
+          - server:*

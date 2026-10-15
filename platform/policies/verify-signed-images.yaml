@@ -1,0 +1,35 @@
+# Só admite imagens do nosso registry que foram ASSINADAS pelo nosso workflow de CI.
+# Assinatura "keyless" (Sigstore): não há chave para guardar/vazar. O CI prova sua
+# identidade ao Fulcio com o token OIDC do GitHub e a assinatura fica registrada no
+# log público Rekor. Aqui verificamos QUEM assinou (workflow ci.yml da branch main).
+#
+# Requer saída para a internet (fulcio/rekor) a partir do cluster.
+# __GITHUB_OWNER__ é trocado por `make configure OWNER=...`.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: aegis-verify-signed-images
+spec:
+  background: false
+  webhookConfiguration:
+    failurePolicy: Ignore   # lab: se o Kyverno cair, não trava o cluster inteiro
+  rules:
+    - name: verify-cosign-keyless
+      match:
+        any:
+          - resources: {kinds: [Pod], namespaces: [aegis]}
+      verifyImages:
+        - failureAction: Audit
+          imageReferences:
+            - "ghcr.io/__GITHUB_OWNER__/aegis-bid/*"
+          # false: não reescreve a tag para digest. Se reescrevesse, o Argo CD
+          # veria "diferença" permanente entre o Git (tag) e o cluster (digest).
+          mutateDigest: false
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: https://token.actions.githubusercontent.com
+                    subjectRegExp: ^https://github.com/__GITHUB_OWNER__/aegis-bid/\.github/workflows/ci\.yml@refs/heads/main$
+                    rekor:
+                      url: https://rekor.sigstore.dev

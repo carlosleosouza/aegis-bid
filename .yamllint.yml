@@ -1,0 +1,14 @@
+extends: default
+rules:
+  line-length: disable          # PromQL e comentários explicativos são longos
+  document-start: disable
+  truthy: {check-keys: false}
+  comments: {require-starting-space: false, min-spaces-from-content: 1}
+  comments-indentation: disable
+  braces: {max-spaces-inside: 1}
+  brackets: {max-spaces-inside: 1}
+  indentation: {spaces: 2, indent-sequences: consistent}
+  empty-lines: {max: 2}
+ignore: |
+  platform/observability/slo-rules.generated.yaml
+  platform/observability/dashboard-saude-do-leilao.yaml

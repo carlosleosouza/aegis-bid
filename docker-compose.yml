@@ -1,0 +1,26 @@
+# Ambiente local SEM Kubernetes: ideal para a fase 1 (entender a aplicação antes
+# de pensar em plataforma).   make dev   ->   http://localhost:8000
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  auction:
+    build: {context: apps, args: {SERVICE: auction}}
+    environment: {REDIS_URL: "redis://redis:6379/0"}
+    ports: ["8001:8000"]
+    depends_on: [redis]
+
+  bid:
+    build: {context: apps, args: {SERVICE: bid}}
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      AUCTION_SVC_URL: "http://auction:8000"
+    ports: ["8002:8000"]
+    depends_on: [redis, auction]
+
+  settlement:
+    build: {context: apps, args: {SERVICE: settlement}}
+    environment: {REDIS_URL: "redis://redis:6379/0"}
+    ports: ["8003:8000"]
+    depends_on: [redis]

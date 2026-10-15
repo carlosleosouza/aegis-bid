@@ -1,0 +1,28 @@
+# Escala o settlement-svc pelo TAMANHO DA FILA, não por CPU.
+# POR QUE: CPU é um sintoma tardio. A fila crescendo é a causa: quando há
+# atraso, já precisamos de mais consumidores, mesmo com CPU baixa.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: settlement-svc
+  labels: {app.kubernetes.io/part-of: aegis-bid}
+spec:
+  scaleTargetRef:
+    name: settlement-svc
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  pollingInterval: 5      # consulta a fila a cada 5 s
+  # cooldownPeriod só vale para escala a ZERO (minReplicaCount: 0). Aqui o mínimo é 1,
+  # então quem controla a descida de N para 1 é o HPA que o KEDA cria: a janela de
+  # estabilização de scale-down (padrão do Kubernetes: 300 s). Para encurtar, use
+  # advanced.horizontalPodAutoscalerConfig.behavior.scaleDown (veja docs/estudo).
+  cooldownPeriod: 60
+  triggers:
+    - type: redis-streams
+      metadata:
+        address: redis.aegis.svc.cluster.local:6379
+        stream: bids
+        consumerGroup: settlement
+        # ~1 réplica para cada 100 mensagens em atraso. Requer Redis >= 7.
+        # (Confira os parâmetros do scaler na documentação da sua versão do KEDA.)
+        lagCount: "100"

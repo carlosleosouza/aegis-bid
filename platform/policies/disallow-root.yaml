@@ -1,0 +1,38 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: aegis-disallow-root
+  annotations:
+    policies.kyverno.io/description: >-
+      Containers devem rodar como não-root, sem escalada de privilégio e com
+      sistema de arquivos raiz somente leitura. Se um atacante invadir o
+      processo, o raio de estrago é muito menor.
+spec:
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+          - resources: {kinds: [Pod], namespaces: [aegis]}
+      validate:
+        failureAction: Audit
+        message: "runAsNonRoot deve ser true (no pod ou em cada container)."
+        anyPattern:
+          - spec:
+              securityContext: {runAsNonRoot: true}
+          - spec:
+              containers:
+                - securityContext: {runAsNonRoot: true}
+    - name: no-privilege-escalation-and-readonly-rootfs
+      match:
+        any:
+          - resources: {kinds: [Pod], namespaces: [aegis]}
+      validate:
+        failureAction: Audit
+        message: "allowPrivilegeEscalation=false e readOnlyRootFilesystem=true são obrigatórios."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true

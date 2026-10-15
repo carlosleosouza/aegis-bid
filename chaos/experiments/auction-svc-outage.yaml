@@ -1,0 +1,13 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: auction-svc-outage
+  namespace: aegis
+spec:
+  action: pod-failure     # o pod fica indisponível pela duração, sem ser recriado
+  mode: all
+  duration: "60s"
+  selector:
+    namespaces: [aegis]
+    labelSelectors:
+      app: auction-svc

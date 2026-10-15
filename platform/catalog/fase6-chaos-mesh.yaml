@@ -1,0 +1,27 @@
+# FASE 6: Chaos Mesh no primário. Dashboard desligado (usamos kubectl + Chaos Director).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chaos-mesh
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.chaos-mesh.org
+    chart: chaos-mesh
+    targetRevision: "*"   # FIXE a versão depois do primeiro sync saudável
+    helm:
+      releaseName: chaos-mesh
+      valuesObject:
+        # k3s usa o containerd em um socket próprio. Sem isto o chaos-daemon não
+        # consegue entrar nos containers e os experimentos de pod/rede falham.
+        chaosDaemon:
+          runtime: containerd
+          socketPath: /run/k3s/containerd/containerd.sock
+        dashboard: {create: false}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chaos-mesh
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

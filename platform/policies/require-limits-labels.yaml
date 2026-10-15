@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: aegis-require-resources-and-labels
+  annotations:
+    policies.kyverno.io/description: >-
+      Todo pod do namespace aegis precisa declarar requests/limits de CPU e
+      memória (evita um serviço consumir o nó inteiro) e ter dono identificado.
+spec:
+  background: true
+  rules:
+    - name: require-limits
+      match:
+        any:
+          - resources: {kinds: [Pod], namespaces: [aegis]}
+      validate:
+        failureAction: Audit
+        message: "Todos os containers precisam de resources.requests e resources.limits (cpu e memory)."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests: {cpu: "?*", memory: "?*"}
+                  limits: {cpu: "?*", memory: "?*"}
+    - name: require-owner-labels
+      match:
+        any:
+          - resources: {kinds: [Pod], namespaces: [aegis]}
+      validate:
+        failureAction: Audit
+        message: "Pods precisam dos labels app.kubernetes.io/part-of e aegis/owner."
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/part-of: "?*"
+              aegis/owner: "?*"

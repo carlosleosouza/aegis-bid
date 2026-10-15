@@ -1,0 +1,61 @@
+# bid-svc é um Rollout (Argo Rollouts) em vez de Deployment: troca a estratégia
+# RollingUpdate por canary controlado. Sem traffic router, o percentual é
+# aproximado pela proporção de réplicas (4 réplicas: 25% = 1 pod, 50% = 2).
+# A análise automática (Error Budget Gate) é adicionada pelo componente
+# `canary-analysis` na fase 4, sem tocar neste arquivo.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: bid-svc
+  labels: {app: bid-svc, app.kubernetes.io/part-of: aegis-bid, aegis/owner: plataforma}
+spec:
+  replicas: 4
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels: {app: bid-svc}
+  strategy:
+    canary:
+      steps:
+        - setWeight: 25
+        - pause: {duration: 60s}
+        - setWeight: 50
+        - pause: {duration: 60s}
+  template:
+    metadata:
+      labels: {app: bid-svc, app.kubernetes.io/part-of: aegis-bid, aegis/owner: plataforma}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: bid
+          image: ghcr.io/__GITHUB_OWNER__/aegis-bid/bid:dev
+          ports: [{name: http, containerPort: 8000}]
+          env:
+            - {name: REDIS_URL, value: "redis://redis:6379/0"}
+            - {name: AUCTION_SVC_URL, value: "http://auction-svc:8000"}
+          resources:
+            requests: {cpu: 100m, memory: 96Mi}
+            limits: {cpu: "1", memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 3
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bid-svc
+  labels: {app: bid-svc, app.kubernetes.io/part-of: aegis-bid}
+spec:
+  selector: {app: bid-svc}
+  ports:
+    - {name: http, port: 8000, targetPort: http}

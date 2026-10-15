@@ -1,0 +1,16 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: bid-latency-500ms
+  namespace: aegis
+spec:
+  action: delay
+  mode: all
+  duration: "60s"
+  selector:
+    namespaces: [aegis]
+    labelSelectors:
+      app: bid-svc
+  delay:
+    latency: "500ms"
+    jitter: "50ms"

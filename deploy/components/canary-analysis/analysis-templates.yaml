@@ -1,0 +1,66 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: error-budget-available
+spec:
+  metrics:
+    - name: budget-remaining
+      count: 1
+      failureLimit: 0
+      # `or vector(1)`: sem dados (cluster novo) o portão abre. Fail-open de
+      # propósito, para o gate não virar motivo de ser desligado.
+      successCondition: result[0] > 0.2
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          query: min(aegis:error_budget_remaining:ratio{slo="bid-availability"}) or vector(1)
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-health
+spec:
+  args:
+    - name: canary-hash
+  metrics:
+    # 1) Erro 5xx SÓ nos pods canary (filtrados pelo hash do template do pod).
+    - name: canary-error-ratio
+      interval: 20s
+      failureLimit: 2
+      successCondition: result[0] < 0.01
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            (
+              sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5..",rollouts_pod_template_hash="{{args.canary-hash}}"}[1m]))
+              /
+              clamp_min(sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",rollouts_pod_template_hash="{{args.canary-hash}}"}[1m])), 0.001)
+            ) or vector(0)
+    # 2) p99 do canary (NaN = sem tráfego ainda: não reprova).
+    - name: canary-p99-latency
+      interval: 20s
+      failureLimit: 2
+      successCondition: isNaN(result[0]) || result[0] < 0.3
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            histogram_quantile(0.99, sum by (le) (rate(aegis_http_request_duration_seconds_bucket{service="bid-svc",route="/api/bids",rollouts_pod_template_hash="{{args.canary-hash}}"}[1m])))
+    # 3) O SERVIÇO INTEIRO está queimando budget rápido demais? (burn rate >= 14.4x)
+    #    Não é culpa do canary, mas não se faz deploy no meio de um incidente.
+    - name: service-fast-burn
+      interval: 30s
+      failureLimit: 1
+      successCondition: result[0] < 14.4
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            (
+              (
+                sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids",code=~"5.."}[5m]))
+                /
+                clamp_min(sum(rate(aegis_http_requests_total{service="bid-svc",route="/api/bids"}[5m])), 0.001)
+              ) / 0.001
+            ) or vector(0)

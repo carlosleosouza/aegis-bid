@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: settlement-svc
+  labels: {app: settlement-svc, app.kubernetes.io/part-of: aegis-bid, aegis/owner: plataforma}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: settlement-svc}
+  template:
+    metadata:
+      labels: {app: settlement-svc, app.kubernetes.io/part-of: aegis-bid, aegis/owner: plataforma}
+    spec:
+      # Dá tempo de o worker terminar o lote em andamento antes do SIGKILL.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: settlement
+          image: ghcr.io/__GITHUB_OWNER__/aegis-bid/settlement:dev
+          ports: [{name: http, containerPort: 8000}]
+          env:
+            - {name: REDIS_URL, value: "redis://redis:6379/0"}
+          resources:
+            requests: {cpu: 100m, memory: 96Mi}
+            limits: {cpu: "1", memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: settlement-svc
+  labels: {app: settlement-svc, app.kubernetes.io/part-of: aegis-bid}
+spec:
+  selector: {app: settlement-svc}
+  ports:
+    - {name: http, port: 8000, targetPort: http}

@@ -1,0 +1,45 @@
+# FASE 2: entrega da aplicação nos DOIS clusters a partir do Git.
+# Um ApplicationSet com o gerador "clusters" cria 1 Application por cluster
+# registrado com o label aegis.io/env (prod e dr). Adicionar um cluster novo =
+# registrar o cluster; nenhum YAML novo.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: aegis
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchExpressions:
+            - {key: aegis.io/env, operator: In, values: [prod, dr]}
+  template:
+    metadata:
+      name: 'aegis-{{ index .metadata.labels "aegis.io/env" }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/__GITHUB_OWNER__/aegis-bid.git
+        targetRevision: main
+        path: 'deploy/overlays/{{ index .metadata.labels "aegis.io/env" }}'
+      destination:
+        server: '{{ .server }}'
+        namespace: aegis
+      # replicas é controlado por KEDA (prod) e pelo failover (dr), não pelo Git.
+      # Sem isto, o selfHeal do Argo CD brigaria com eles.
+      ignoreDifferences:
+        - {group: apps, kind: Deployment, jsonPointers: [/spec/replicas]}
+        - {group: argoproj.io, kind: Rollout, jsonPointers: [/spec/replicas]}
+      syncPolicy:
+        automated: {prune: true, selfHeal: true}
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+          # CRDs (Rollout, ServiceMonitor...) podem ainda não existir no 1o sync.
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 10
+          backoff: {duration: 15s, factor: 2, maxDuration: 5m}

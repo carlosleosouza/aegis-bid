@@ -1,0 +1,12 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: kill-bid-pod
+  namespace: aegis
+spec:
+  action: pod-kill        # mata o pod de forma abrupta (sem graceful shutdown)
+  mode: one               # apenas 1 pod escolhido ao acaso
+  selector:
+    namespaces: [aegis]
+    labelSelectors:
+      app: bid-svc

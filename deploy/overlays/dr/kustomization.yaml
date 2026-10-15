@@ -1,0 +1,27 @@
+# Overlay do cluster de DR (estratégia "pilot light"):
+#  - serviços com 0 réplicas (ligados no failover por scripts/failover.sh)
+#  - Redis ligado e (fase 8) replicando do primário
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+components:
+#fase7# - ../../components/network-policies
+#fase8# - ../../components/dr-replication
+patches:
+  - target: {kind: Rollout, name: bid-svc}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 0}
+  - target: {kind: Deployment, name: auction-svc}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 0}
+  - target: {kind: Deployment, name: settlement-svc}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 0}
+images:
+  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/auction
+    newTag: dev # tag:auction
+  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/bid
+    newTag: dev # tag:bid
+  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/settlement
+    newTag: dev # tag:settlement
