@@ -46,7 +46,7 @@ edge: network ## Sobe o HAProxy de borda em :8080 (prod com failover para dr)
 	docker run -d --name aegis-edge --network aegis-net -p 8080:8080 \
 	  -v "$(CURDIR)/bootstrap/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" haproxy:lts-alpine
 
-up: preflight clusters argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
+up: clusters argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
 	@echo; echo "Pronto. Próximo: docs/fase-0-fundacao.md (verificação) e docs/fase-1-app-ci.md"
 
 down: ## Destrói TUDO (clusters, borda, rede)
