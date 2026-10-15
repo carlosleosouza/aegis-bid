@@ -55,7 +55,7 @@ O domínio impõe três propriedades que justificam, uma a uma, as peças de pla
  └───────────────────────────────────────────────────────────────────────┘
 ```
 
-Atalhos úteis para depurar sem passar pela borda: prod direto em `localhost:8081`, DR direto em `localhost:8082`. As interfaces (Argo CD, Prometheus, Grafana) são acessadas por `port-forward` (`make argocd-ui`, `make prom-ui`, `make grafana-ui`).
+Atalhos úteis para depurar sem passar pela borda: prod direto em `localhost:8083`, DR direto em `localhost:8082`. As interfaces (Argo CD, Prometheus, Grafana) são acessadas por `port-forward` (`make argocd-ui`, `make prom-ui`, `make grafana-ui`).
 
 **Por que a rede Docker compartilhada importa:** ela permite três coisas que sem ela não existiriam: o Argo CD do `prod` alcançar a API do `dr`; o Redis do `dr` replicar do `prod`; o HAProxy falar com os dois clusters.
 
@@ -180,7 +180,7 @@ Esta tabela evita a pergunta mais comum de confusão: "se eu mudar X, quem desfa
 | Endereço | O que é | Como abrir |
 |---|---|---|
 | `localhost:8090` | borda (HAProxy), entrada oficial | `make edge` (já incluso no `make up`) |
-| `localhost:8081` | Traefik do prod, direto | automático (k3d) |
+| `localhost:8083` | Traefik do prod, direto | automático (k3d) |
 | `localhost:8082` | Traefik do DR, direto | automático (k3d) |
 | `https://localhost:8443` | UI do Argo CD (usuário `admin`) | `make argocd-ui` |
 | `http://localhost:9090` | Prometheus | `make prom-ui` |

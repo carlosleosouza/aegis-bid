@@ -15,7 +15,7 @@ network: aegis-net
 ports:
   # Acesso direto ao Traefik do prod, sem passar pela borda (útil para depurar):
   #   curl -H 'Host: aegis.localhost' http://localhost:8081/api/auctions
-  - port: 8081:80
+  - port: 8083:80
     nodeFilters:
       - loadbalancer
 options:
