@@ -17,7 +17,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: auction
-          image: ghcr.io/__GITHUB_OWNER__/aegis-bid/auction:dev
+          image: ghcr.io/carlosleosouza/aegis-bid/auction:dev
           ports: [{name: http, containerPort: 8000}]
           env:
             - {name: REDIS_URL, value: "redis://redis:6379/0"}

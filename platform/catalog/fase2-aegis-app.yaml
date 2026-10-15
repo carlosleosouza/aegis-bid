@@ -21,7 +21,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/__GITHUB_OWNER__/aegis-bid.git
+        repoURL: https://github.com/carlosleosouza/aegis-bid.git
         targetRevision: main
         path: 'deploy/overlays/{{ index .metadata.labels "aegis.io/env" }}'
       destination:

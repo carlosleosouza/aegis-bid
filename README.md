@@ -32,7 +32,7 @@ Complementos: [`docs/ENTREVISTA.md`](docs/ENTREVISTA.md) (roteiro de apresentaç
 
 ```bash
 make help                              # todos os alvos, com descrição
-make configure OWNER=seu-usuario       # troca o placeholder __GITHUB_OWNER__
+make configure OWNER=seu-usuario       # troca o placeholder carlosleosouza
 # crie o repo PÚBLICO "aegis-bid" no GitHub, faça commit e push na branch main
 make test                              # testes unitários (não precisa de cluster)
 make up                                # Fase 0 completa (~10-15 min na primeira vez)

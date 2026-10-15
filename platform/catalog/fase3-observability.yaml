@@ -7,7 +7,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/__GITHUB_OWNER__/aegis-bid.git
+    repoURL: https://github.com/carlosleosouza/aegis-bid.git
     targetRevision: main
     path: platform/observability
     directory:

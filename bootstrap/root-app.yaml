@@ -2,7 +2,7 @@
 # cluster. Ela observa platform/apps/ no Git; tudo o que for commitado lá vira
 # um ApplicationSet/Application, e tudo o que estiver lá é entregue pelo Argo CD.
 #
-# O placeholder __GITHUB_OWNER__ é trocado por `make configure OWNER=seu-usuario`.
+# O placeholder carlosleosouza é trocado por `make configure OWNER=seu-usuario`.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -12,7 +12,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/__GITHUB_OWNER__/aegis-bid.git
+    repoURL: https://github.com/carlosleosouza/aegis-bid.git
     targetRevision: main
     path: platform/apps
     directory:

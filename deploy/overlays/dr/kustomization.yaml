@@ -19,9 +19,9 @@ patches:
     patch: |-
       - {op: replace, path: /spec/replicas, value: 0}
 images:
-  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/auction
+  - name: ghcr.io/carlosleosouza/aegis-bid/auction
     newTag: dev # tag:auction
-  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/bid
+  - name: ghcr.io/carlosleosouza/aegis-bid/bid
     newTag: dev # tag:bid
-  - name: ghcr.io/__GITHUB_OWNER__/aegis-bid/settlement
+  - name: ghcr.io/carlosleosouza/aegis-bid/settlement
     newTag: dev # tag:settlement
