@@ -47,9 +47,9 @@ register: ## Registra prod e dr no Argo CD
 root: ## Aplica a Application raiz (única coisa aplicada à mão)
 	kubectl --context $(PROD) apply -f bootstrap/root-app.yaml
 
-edge: network ## Sobe o HAProxy de borda em :$(EDGE_PORT) (padrão 8080; prod com failover para dr)
+edge: network ## Sobe o HAProxy de borda em :$(EDGE_PORT) (padrão 8084; prod com failover para dr)
 	-@docker rm -f aegis-edge >/dev/null 2>&1
-	docker run -d --name aegis-edge --network aegis-net -p $(EDGE_PORT):8080 \
+	docker run -d --name aegis-edge --network aegis-net -p $(EDGE_PORT):8084 \
 	  -v "$(CURDIR)/bootstrap/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" haproxy:lts-alpine
 
 up: preflight clusters argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
