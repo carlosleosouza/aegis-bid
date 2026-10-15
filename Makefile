@@ -43,7 +43,7 @@ root: ## Aplica a Application raiz (única coisa aplicada à mão)
 
 edge: network ## Sobe o HAProxy de borda em :8090 (prod com failover para dr)
 	-@docker rm -f aegis-edge >/dev/null 2>&1
-	docker run -d --name aegis-edge --network aegis-net -p 8080:8090 \
+	docker run -d --name aegis-edge --network aegis-net -p 8090:8090 \
 	  -v "$(CURDIR)/bootstrap/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" haproxy:lts-alpine
 
 up: argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
