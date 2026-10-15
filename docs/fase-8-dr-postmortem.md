@@ -34,7 +34,7 @@ kubectl --context k3d-aegis-dr -n aegis exec deploy/redis -- redis-cli info repl
 ```
 Crie um leilão pela borda e confirme que o dado aparece no Redis do DR:
 ```bash
-curl -s -H 'Host: aegis.localhost' -X POST http://localhost:8080/api/auctions -H 'content-type: application/json' \
+curl -s -H 'Host: aegis.localhost' -X POST http://localhost:8090/api/auctions -H 'content-type: application/json' \
   -d '{"title":"antes-do-desastre","starting_price":100,"duration_seconds":3600}'
 kubectl --context k3d-aegis-dr -n aegis exec deploy/redis -- redis-cli dbsize
 ```
@@ -57,7 +57,7 @@ Anote os números. Eles são a entrega.
 
 ### 5. Verifique que o DR serve de verdade
 ```bash
-curl -s -H 'Host: aegis.localhost' http://localhost:8080/api/auctions          # lista o que foi replicado
+curl -s -H 'Host: aegis.localhost' http://localhost:8090/api/auctions          # lista o que foi replicado
 ```
 Quais leilões/lances **não** aparecem? Isso é o seu RPO real (os que ainda não tinham sido replicados).
 

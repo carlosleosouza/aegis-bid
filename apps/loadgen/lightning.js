@@ -1,6 +1,6 @@
 // Leilão Relâmpago: simula a corrida dos últimos segundos de um leilão.
 //
-//   k6 run -e BASE_URL=http://aegis.localhost:8080 -e PEAK_RPS=500 apps/loadgen/lightning.js
+//   k6 run -e BASE_URL=http://aegis.localhost:8090 -e PEAK_RPS=500 apps/loadgen/lightning.js
 //
 // PEAK_RPS: comece com 200-500 no notebook. 5000 exige máquina folgada (e o k6
 // também consome CPU: se o gerador de carga for o gargalo, o teste mente).
@@ -13,7 +13,7 @@ import http from "k6/http";
 import { check } from "k6";
 import { Counter } from "k6/metrics";
 
-const BASE = __ENV.BASE_URL || "http://aegis.localhost:8080";
+const BASE = __ENV.BASE_URL || "http://aegis.localhost:8090";
 const PEAK = parseInt(__ENV.PEAK_RPS || "500");
 const duplicatesAccepted = new Counter("duplicates_wrongly_accepted");
 

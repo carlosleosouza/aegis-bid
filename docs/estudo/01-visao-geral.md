@@ -33,10 +33,10 @@ O domínio impõe três propriedades que justificam, uma a uma, as peças de pla
 
 ```
  cliente (curl, k6, navegador)
-        │  http://localhost:8080   (cabeçalho Host: aegis.localhost)
+        │  http://localhost:8090   (cabeçalho Host: aegis.localhost)
         ▼
  ┌────────────────────────── host Docker ───────────────────────────────┐
- │  aegis-edge (HAProxy) :8080                                           │
+ │  aegis-edge (HAProxy) :8090                                           │
  │     │ normal                         │ backup (só se o prod estiver   │
  │     │                                │ DOWN no health check)          │
  │     ▼                                ▼                                │
@@ -179,7 +179,7 @@ Esta tabela evita a pergunta mais comum de confusão: "se eu mudar X, quem desfa
 
 | Endereço | O que é | Como abrir |
 |---|---|---|
-| `localhost:8080` | borda (HAProxy), entrada oficial | `make edge` (já incluso no `make up`) |
+| `localhost:8090` | borda (HAProxy), entrada oficial | `make edge` (já incluso no `make up`) |
 | `localhost:8081` | Traefik do prod, direto | automático (k3d) |
 | `localhost:8082` | Traefik do DR, direto | automático (k3d) |
 | `https://localhost:8443` | UI do Argo CD (usuário `admin`) | `make argocd-ui` |
@@ -187,7 +187,7 @@ Esta tabela evita a pergunta mais comum de confusão: "se eu mudar X, quem desfa
 | `http://localhost:3000` | Grafana (`admin` / `aegis-lab`, LAB ONLY) | `make grafana-ui` |
 | `localhost:8001/8002/8003` | auction/bid/settlement no docker compose | `make dev` |
 
-Para o `curl` falar com a borda: `curl -H 'Host: aegis.localhost' http://localhost:8080/api/auctions`. Se preferir usar o nome direto, adicione `127.0.0.1 aegis.localhost` ao `/etc/hosts`.
+Para o `curl` falar com a borda: `curl -H 'Host: aegis.localhost' http://localhost:8090/api/auctions`. Se preferir usar o nome direto, adicione `127.0.0.1 aegis.localhost` ao `/etc/hosts`.
 
 ## 11. Limitações assumidas (e por que são aceitáveis num laboratório)
 

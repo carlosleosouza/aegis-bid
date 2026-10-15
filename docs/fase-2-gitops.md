@@ -36,8 +36,8 @@ O Argo CD cria `aegis-prod` e `aegis-dr`. Na primeira sincronização pode haver
 ```bash
 kubectl --context k3d-aegis-prod -n aegis get pods,rollouts     # pods Running
 kubectl --context k3d-aegis-dr   -n aegis get pods              # DR: serviços com 0 réplicas (pilot light); só o Redis sobe
-curl -s -H 'Host: aegis.localhost' http://localhost:8080/api/auctions       # via borda (HAProxy) → 200
-curl -s -H 'Host: aegis.localhost' -X POST http://localhost:8080/api/auctions \
+curl -s -H 'Host: aegis.localhost' http://localhost:8090/api/auctions       # via borda (HAProxy) → 200
+curl -s -H 'Host: aegis.localhost' -X POST http://localhost:8090/api/auctions \
   -H 'content-type: application/json' \
   -d '{"title":"Teste","starting_price":100,"duration_seconds":60}'
 ```

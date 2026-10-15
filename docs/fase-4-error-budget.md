@@ -29,7 +29,7 @@ make rollout-watch
 ```
 **Esperado**: passos 25% → 50% → 100%, análises `Successful`, nova revisão *Healthy*. Com pouco tráfego o p99 vem `NaN` (tratado como "ainda sem dados": não reprova); gere carga em outro terminal para exercitar de verdade:
 ```bash
-for i in $(seq 1 600); do curl -s -o /dev/null -H 'Host: aegis.localhost' http://localhost:8080/api/auctions; done
+for i in $(seq 1 600); do curl -s -o /dev/null -H 'Host: aegis.localhost' http://localhost:8090/api/auctions; done
 ```
 
 ### 3. Deploy RUIM (a prova)

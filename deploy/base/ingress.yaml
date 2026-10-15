@@ -1,6 +1,6 @@
 # Roteamento por caminho no Traefik (embutido no k3s).
 # aegis.localhost resolve para 127.0.0.1 nos navegadores modernos; com curl,
-# use: curl -H 'Host: aegis.localhost' http://localhost:8080/...
+# use: curl -H 'Host: aegis.localhost' http://localhost:8090/...
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

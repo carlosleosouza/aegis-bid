@@ -57,7 +57,7 @@ O alvo executa, na ordem: `preflight` → `clusters` → `argocd` → `register`
 | `argocd` | instala o Argo CD com `--server-side` | os CRDs são grandes demais para o `apply` comum (limite de 256 KB da annotation) |
 | `register` | cria Secrets rotulados `aegis.io/env` (`prod` ou `dr`) | o ApplicationSet escolhe clusters por esse label |
 | `root` | aplica a Application raiz (app-of-apps) | **única coisa aplicada à mão**; ela observa `platform/apps/` |
-| `edge` | HAProxy em `:8080` (prod, com `dr` como backup) | ponto de entrada único; base do failover |
+| `edge` | HAProxy em `:8090` (prod, com `dr` como backup) | ponto de entrada único; base do failover |
 
 ## Verificação
 ```bash

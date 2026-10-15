@@ -37,7 +37,7 @@ Em `platform/catalog/fase3-kube-prometheus-stack.yaml`:
 ```bash
 make prom-ui        # http://localhost:9090  (em um terminal)
 # em outro terminal, gere carga leve:
-for i in $(seq 1 200); do curl -s -o /dev/null -H 'Host: aegis.localhost' http://localhost:8080/api/auctions; done
+for i in $(seq 1 200); do curl -s -o /dev/null -H 'Host: aegis.localhost' http://localhost:8090/api/auctions; done
 ```
 No Prometheus:
 - `Status → Targets`: os 3 serviços *UP*.

@@ -10,7 +10,7 @@
 set -euo pipefail
 PROD=k3d-aegis-prod
 DR=k3d-aegis-dr
-EDGE="${EDGE_URL:-http://localhost:8080}"
+EDGE="${EDGE_URL:-http://localhost:8090}"
 code() { curl -s -o /dev/null -m 2 -w '%{http_code}' -H 'Host: aegis.localhost' "$EDGE/api/auctions" || true; }
 rcli() { kubectl --context "$1" -n aegis exec deploy/redis -- redis-cli "${@:2}" | tr -d '\r'; }
 

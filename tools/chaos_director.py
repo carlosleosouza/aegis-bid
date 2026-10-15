@@ -190,7 +190,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", default=os.path.join(ROOT, "chaos", "catalog.yaml"))
     ap.add_argument("--prom-url", default="http://localhost:9090")
-    ap.add_argument("--base-url", default="http://aegis.localhost:8080")
+    ap.add_argument("--base-url", default="http://aegis.localhost:8090")
     ap.add_argument("--id")
     ap.add_argument("--random", action="store_true")
     ap.add_argument("--seed", type=int)

@@ -41,9 +41,9 @@ register: ## Registra prod e dr no Argo CD
 root: ## Aplica a Application raiz (única coisa aplicada à mão)
 	kubectl --context $(PROD) apply -f bootstrap/root-app.yaml
 
-edge: network ## Sobe o HAProxy de borda em :8080 (prod com failover para dr)
+edge: network ## Sobe o HAProxy de borda em :8090 (prod com failover para dr)
 	-@docker rm -f aegis-edge >/dev/null 2>&1
-	docker run -d --name aegis-edge --network aegis-net -p 8080:8080 \
+	docker run -d --name aegis-edge --network aegis-net -p 8080:8090 \
 	  -v "$(CURDIR)/bootstrap/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" haproxy:lts-alpine
 
 up: argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
@@ -113,7 +113,7 @@ rollout-watch: ## Acompanha o canary do bid-svc (requer o plugin kubectl-argo-ro
 # ---------------------------------------------------------------- fases 5-8
 .PHONY: lightning chaos chaos-list postmortem gate failover restore-prod
 lightning: ## Leilão Relâmpago (k6): make lightning PEAK=500
-	k6 run -e BASE_URL=http://aegis.localhost:8080 -e PEAK_RPS=$(or $(PEAK),500) apps/loadgen/lightning.js
+	k6 run -e BASE_URL=http://aegis.localhost:8090 -e PEAK_RPS=$(or $(PEAK),500) apps/loadgen/lightning.js
 
 chaos-list: ## Lista experimentos de caos
 	$(PYTHON) tools/chaos_director.py --list
