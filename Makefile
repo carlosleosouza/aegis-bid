@@ -77,8 +77,8 @@ images-load: ## Ponte local: carrega as imagens nos clusters k3d (sem GHCR/CI). 
 	./scripts/build-images.sh load
 
 test: ## Testes unitários (apps + tools)
-	cd apps && $(PYTHON) -m conftest -q
-	$(PYTHON) -m conftest -q tools/tests
+	cd apps && $(PYTHON) -m pytest -q
+	$(PYTHON) -m pytest -q tools/tests
 
 lint: ## yamllint nos manifests
 	$(PYTHON) -m yamllint -c .yamllint.yml deploy platform bootstrap chaos .github
