@@ -10,7 +10,7 @@ VENV ?= .venv
 PYTHON ?= $(if $(wildcard $(abspath $(VENV))/bin/python),$(abspath $(VENV))/bin/python,python3)
 # Porta do HOST onde a borda (HAProxy) escuta. Troque se a 8080 estiver ocupada:
 #   make edge EDGE_PORT=8090      (e use http://localhost:8090 nos curls dos guias)
-EDGE_PORT ?= 8080
+EDGE_PORT ?= 8090
 export EDGE_PORT
 
 .DEFAULT_GOAL := help
@@ -47,9 +47,9 @@ register: ## Registra prod e dr no Argo CD
 root: ## Aplica a Application raiz (única coisa aplicada à mão)
 	kubectl --context $(PROD) apply -f bootstrap/root-app.yaml
 
-edge: network ## Sobe o HAProxy de borda em :$(EDGE_PORT) (padrão 8084; prod com failover para dr)
+edge: network ## Sobe o HAProxy de borda em :$(EDGE_PORT) (padrão 8090; prod com failover para dr)
 	-@docker rm -f aegis-edge >/dev/null 2>&1
-	docker run -d --name aegis-edge --network aegis-net -p $(EDGE_PORT):8084 \
+	docker run -d --name aegis-edge --network aegis-net -p $(EDGE_PORT):8090 \
 	  -v "$(CURDIR)/bootstrap/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" haproxy:lts-alpine
 
 up: preflight clusters argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
