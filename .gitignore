@@ -5,3 +5,4 @@ __pycache__/
 *.bak
 postmortems/data/
 .DS_Store
+*.bkp

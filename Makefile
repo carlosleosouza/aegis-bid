@@ -5,7 +5,13 @@ SHELL := /bin/bash
 PROD  := k3d-aegis-prod
 DR    := k3d-aegis-dr
 ARGOCD_VERSION ?= stable
-PYTHON ?= python3
+VENV ?= .venv
+# Usa o Python do .venv se ele existir (make venv); senão, o python3 do sistema.
+PYTHON ?= $(if $(wildcard $(abspath $(VENV))/bin/python),$(abspath $(VENV))/bin/python,python3)
+# Porta do HOST onde a borda (HAProxy) escuta. Troque se a 8080 estiver ocupada:
+#   make edge EDGE_PORT=8090      (e use http://localhost:8090 nos curls dos guias)
+EDGE_PORT ?= 8080
+export EDGE_PORT
 
 .DEFAULT_GOAL := help
 .PHONY: help
@@ -41,12 +47,12 @@ register: ## Registra prod e dr no Argo CD
 root: ## Aplica a Application raiz (única coisa aplicada à mão)
 	kubectl --context $(PROD) apply -f bootstrap/root-app.yaml
 
-edge: network ## Sobe o HAProxy de borda em :8090 (prod com failover para dr)
+edge: network ## Sobe o HAProxy de borda em :$(EDGE_PORT) (padrão 8080; prod com failover para dr)
 	-@docker rm -f aegis-edge >/dev/null 2>&1
-	docker run -d --name aegis-edge --network aegis-net -p 8090:8090 \
+	docker run -d --name aegis-edge --network aegis-net -p $(EDGE_PORT):8080 \
 	  -v "$(CURDIR)/bootstrap/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" haproxy:lts-alpine
 
-up: argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
+up: preflight clusters argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
 	@echo; echo "Pronto. Próximo: docs/fase-0-fundacao.md (verificação) e docs/fase-1-app-ci.md"
 
 down: ## Destrói TUDO (clusters, borda, rede)
@@ -59,7 +65,7 @@ status: ## Visão rápida: apps do Argo CD e pods
 	@echo; kubectl --context $(PROD) -n aegis get pods,rollouts 2>/dev/null || true
 
 # ---------------------------------------------------------------- fases 1-8
-.PHONY: dev dev-down images image-smoke images-load test lint slo-rules dashboard enable
+.PHONY: dev dev-down images image-smoke images-load venv test lint slo-rules dashboard enable
 dev: ## App SEM Kubernetes (docker compose): auction:8001 bid:8002 settlement:8003
 	docker compose up --build -d
 	@echo "teste rápido: veja docs/fase-1-app-ci.md"
@@ -76,11 +82,18 @@ image-smoke: ## Sobe as imagens construídas e prova que funcionam (readyz, não
 images-load: ## Ponte local: carrega as imagens nos clusters k3d (sem GHCR/CI). Ver Fase 1, passo 4
 	./scripts/build-images.sh load
 
-test: ## Testes unitários (apps + tools)
-	cd apps && $(PYTHON) -m pytest -q
+venv: ## Cria o .venv com as dependências de teste/lint (rode uma vez antes de make test)
+	python3 -m venv $(VENV)
+	$(abspath $(VENV))/bin/pip install -q -r apps/requirements-dev.txt
+	@echo "✔ $(VENV) pronto. Agora: make test"
+
+test: ## Testes unitários (apps + tools). Se faltar dependência: make venv
+	@$(PYTHON) -c 'import pytest, fakeredis, yaml' 2>/dev/null || { echo "✘ faltam dependências de teste (pytest, fakeredis, PyYAML). Rode: make venv"; exit 1; }
+	cd apps && $(PYTHON) -m pytest -q -rs
 	$(PYTHON) -m pytest -q tools/tests
 
-lint: ## yamllint nos manifests
+lint: ## yamllint nos manifests (precisa do make venv)
+	@$(PYTHON) -c 'import yamllint' 2>/dev/null || { echo "✘ yamllint ausente. Rode: make venv"; exit 1; }
 	$(PYTHON) -m yamllint -c .yamllint.yml deploy platform bootstrap chaos .github
 
 slo-rules: ## Regenera regras de SLO e dashboard a partir das especificações
@@ -113,7 +126,7 @@ rollout-watch: ## Acompanha o canary do bid-svc (requer o plugin kubectl-argo-ro
 # ---------------------------------------------------------------- fases 5-8
 .PHONY: lightning chaos chaos-list postmortem gate failover restore-prod
 lightning: ## Leilão Relâmpago (k6): make lightning PEAK=500
-	k6 run -e BASE_URL=http://aegis.localhost:8090 -e PEAK_RPS=$(or $(PEAK),500) apps/loadgen/lightning.js
+	k6 run -e BASE_URL=http://aegis.localhost:$(EDGE_PORT) -e PEAK_RPS=$(or $(PEAK),500) apps/loadgen/lightning.js
 
 chaos-list: ## Lista experimentos de caos
 	$(PYTHON) tools/chaos_director.py --list
