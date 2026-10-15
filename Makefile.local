@@ -1,0 +1,2 @@
+# Preferências locais (não vai para o Git). Porta do HOST da borda HAProxy:
+EDGE_PORT ?= 8090

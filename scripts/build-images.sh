@@ -61,9 +61,15 @@ wait_ready() { # <container>
 
 do_smoke() {
   if [[ -n "${DRY_RUN:-}" ]]; then echo "+ (smoke: sobe redis + 3 imagens numa rede temporária e testa)"; return 0; fi
-  local net="aegis-smoke-$$"
-  cleanup() { docker rm -f "${net}-redis" "${net}-auction" "${net}-bid" "${net}-settlement" >/dev/null 2>&1 || true
-              docker network rm "$net" >/dev/null 2>&1 || true; }
+  # `net` é GLOBAL de propósito: o trap EXIT só dispara quando o script inteiro termina,
+  # depois que as variáveis `local` da função já deixaram de existir (com `set -u`,
+  # isso quebrava com "net: variável não associada" e a limpeza nunca rodava).
+  net="aegis-smoke-$$"
+  cleanup() {
+    [[ -n "${net:-}" ]] || return 0
+    docker rm -f "${net}-redis" "${net}-auction" "${net}-bid" "${net}-settlement" >/dev/null 2>&1 || true
+    docker network rm "$net" >/dev/null 2>&1 || true
+  }
   trap cleanup EXIT
   docker network create "$net" >/dev/null
 

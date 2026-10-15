@@ -8,10 +8,18 @@ ARGOCD_VERSION ?= stable
 VENV ?= .venv
 # Usa o Python do .venv se ele existir (make venv); senão, o python3 do sistema.
 PYTHON ?= $(if $(wildcard $(abspath $(VENV))/bin/python),$(abspath $(VENV))/bin/python,python3)
-# Porta do HOST onde a borda (HAProxy) escuta. Troque se a 8080 estiver ocupada:
-#   make edge EDGE_PORT=8090      (e use http://localhost:8090 nos curls dos guias)
-EDGE_PORT ?= 8090
+# Preferências SUAS (não vão para o Git). Crie o arquivo só se precisar, por exemplo:
+#   echo 'EDGE_PORT ?= 8090' > Makefile.local
+# Assim uma atualização do projeto nunca sobrescreve a sua escolha de portas.
+-include Makefile.local
+
+# Porta do HOST onde a borda (HAProxy) escuta. Troque se a 8080 estiver ocupada
+# (também dá para passar na hora: make edge EDGE_PORT=8090).
+EDGE_PORT ?= 8080
 export EDGE_PORT
+# Porta de DENTRO do container: lida do `bind` do haproxy.cfg, para os dois lados do
+# mapeamento -p nunca divergirem (se você mudar o bind, o Makefile acompanha).
+EDGE_INNER_PORT := $(or $(shell sed -n 's/^[[:space:]]*bind[[:space:]]\+\*:\([0-9]\+\).*/\1/p' bootstrap/haproxy.cfg 2>/dev/null | head -1),8080)
 
 .DEFAULT_GOAL := help
 .PHONY: help
@@ -47,22 +55,23 @@ register: ## Registra prod e dr no Argo CD
 root: ## Aplica a Application raiz (única coisa aplicada à mão)
 	kubectl --context $(PROD) apply -f bootstrap/root-app.yaml
 
-edge: network ## Sobe o HAProxy de borda em :$(EDGE_PORT) (padrão 8090; prod com failover para dr)
+edge: network ## Sobe o HAProxy de borda (porta do host = EDGE_PORT, padrão 8080; a de dentro vem do haproxy.cfg)
 	-@docker rm -f aegis-edge >/dev/null 2>&1
-	docker run -d --name aegis-edge --network aegis-net -p $(EDGE_PORT):8090 \
+	docker run -d --name aegis-edge --network aegis-net -p $(EDGE_PORT):$(EDGE_INNER_PORT) \
 	  -v "$(CURDIR)/bootstrap/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro" haproxy:lts-alpine
 
 up: preflight clusters argocd register root edge ## Fase 0 completa: do zero ao Argo CD observando o Git
 	@echo; echo "Pronto. Próximo: docs/fase-0-fundacao.md (verificação) e docs/fase-1-app-ci.md"
 
-down: ## Destrói TUDO (clusters, borda, rede)
+down: ## Destrói TUDO (clusters, borda, rede e sobras do smoke test)
 	-docker rm -f aegis-edge
+	-docker ps -aq --filter name=aegis-smoke | xargs -r docker rm -f
+	-docker network ls -q --filter name=aegis-smoke | xargs -r docker network rm
 	-k3d cluster delete aegis-prod aegis-dr
 	-docker network rm aegis-net
 
-status: ## Visão rápida: apps do Argo CD e pods
-	@kubectl --context $(PROD) -n argocd get applications 2>/dev/null || true
-	@echo; kubectl --context $(PROD) -n aegis get pods,rollouts 2>/dev/null || true
+status: ## Mapa do ambiente: clusters, borda, Argo CD (e em qual cluster ele roda) e a aplicação
+	@./scripts/status.sh
 
 # ---------------------------------------------------------------- fases 1-8
 .PHONY: dev dev-down images image-smoke images-load venv test lint slo-rules dashboard enable
