@@ -1,0 +1,38 @@
+# FASE 2: Argo Rollouts nos dois clusters (o bid-svc já nasce como Rollout).
+# targetRevision "*" = última versão do chart. Para REPRODUTIBILIDADE, depois do
+# primeiro sync saudável, FIXE a versão (veja docs/fase-2-gitops.md, passo 7).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchExpressions:
+            - {key: aegis.io/env, operator: In, values: [prod, dr]}
+  template:
+    metadata:
+      name: 'argo-rollouts-{{ index .metadata.labels "aegis.io/env" }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://argoproj.github.io/argo-helm
+        chart: argo-rollouts
+        targetRevision: "*"
+        helm:
+          releaseName: argo-rollouts
+          valuesObject:
+            controller:
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+            dashboard: {enabled: false}
+      destination:
+        server: '{{ .server }}'
+        namespace: argo-rollouts
+      syncPolicy:
+        automated: {prune: true, selfHeal: true}
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
