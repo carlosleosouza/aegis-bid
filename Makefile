@@ -27,7 +27,7 @@ help: ## Lista os alvos
 	@grep -hE '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*## "}{printf "  \033[36m%-16s\033[0m %s\n",$$1,$$2}'
 
 # ---------------------------------------------------------------- fase 0
-.PHONY: preflight configure network clusters argocd register root edge up down status
+.PHONY: preflight configure network clusters argocd register root edge up down status doctor
 preflight: ## Confere docker/k3d/kubectl antes de começar
 	@./scripts/preflight.sh
 
@@ -73,14 +73,17 @@ down: ## Destrói TUDO (clusters, borda, rede e sobras do smoke test)
 status: ## Mapa do ambiente: clusters, borda, Argo CD (e em qual cluster ele roda) e a aplicação
 	@./scripts/status.sh
 
+doctor: ## "A API não responde pela borda": acha a camada quebrada e diz o que fazer
+	@./scripts/doctor.sh
+
 # ---------------------------------------------------------------- fases 1-8
 .PHONY: dev dev-down images image-smoke images-load venv test lint slo-rules dashboard enable
 dev: ## App SEM Kubernetes (docker compose): auction:8001 bid:8002 settlement:8003
-	docker-compose up --build -d
+	docker compose up --build -d
 	@echo "teste rápido: veja docs/fase-1-app-ci.md"
 
 dev-down: ## Derruba o docker compose
-	docker-compose down -v
+	docker compose down -v
 
 images: ## Constrói as 3 imagens (docker build) com o nome que os manifests esperam
 	./scripts/build-images.sh build
