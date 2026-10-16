@@ -20,8 +20,8 @@ patches:
       - {op: replace, path: /spec/replicas, value: 0}
 images:
   - name: ghcr.io/carlosleosouza/aegis-bid/auction
-    newTag: dev # tag:auction
+    newTag: sha-9c424ca # tag:auction
   - name: ghcr.io/carlosleosouza/aegis-bid/bid
-    newTag: dev # tag:bid
+    newTag: sha-9c424ca # tag:bid
   - name: ghcr.io/carlosleosouza/aegis-bid/settlement
-    newTag: dev # tag:settlement
+    newTag: sha-9c424ca # tag:settlement
