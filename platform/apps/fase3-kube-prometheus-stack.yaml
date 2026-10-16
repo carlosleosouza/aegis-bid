@@ -1,0 +1,53 @@
+# FASE 3: Prometheus + Alertmanager + Grafana (somente no cluster primário).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: "*"   # FIXE a versão depois do primeiro sync saudável
+    helm:
+      releaseName: kube-prometheus-stack
+      valuesObject:
+        # Pegar ServiceMonitors/PrometheusRules de QUALQUER namespace (não só os
+        # com o label do release do Helm). Sem isto, o ServiceMonitor do namespace
+        # aegis seria ignorado.
+        prometheus:
+          prometheusSpec:
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            retention: 7d
+            resources:
+              requests: {cpu: 200m, memory: 600Mi}
+              limits: {memory: 1500Mi}
+        grafana:
+          adminPassword: aegis-lab      # LAB ONLY. Em produção: Secret externo.
+          defaultDashboardsTimezone: America/Sao_Paulo
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              labelValue: "1"
+              searchNamespace: ALL
+        # k3s não expõe estes componentes como o Kubernetes "padrão": deixá-los
+        # ligados só geraria alertas falsos (Watchdog/TargetDown).
+        kubeEtcd: {enabled: false}
+        kubeScheduler: {enabled: false}
+        kubeControllerManager: {enabled: false}
+        kubeProxy: {enabled: false}
+        # Economia de recursos / compatibilidade com k3d em Mac e Windows.
+        nodeExporter: {enabled: false}
+        prometheus-node-exporter: {enabled: false}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    # ServerSideApply é OBRIGATÓRIO: os CRDs deste chart são grandes demais para o
+    # "client-side apply" (anotação last-applied passa de 256 KB e o sync falha).
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

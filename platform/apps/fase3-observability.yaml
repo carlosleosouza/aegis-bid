@@ -1,0 +1,23 @@
+# FASE 3: regras de SLO (geradas) + dashboard "Saúde do Leilão".
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aegis-observability
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/carlosleosouza/aegis-bid.git
+    targetRevision: main
+    path: platform/observability
+    directory:
+      exclude: 'slos.yaml'   # é a ESPECIFICAÇÃO dos SLOs, não um recurso Kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [ServerSideApply=true, SkipDryRunOnMissingResource=true]
+    retry:
+      limit: 10
+      backoff: {duration: 15s, factor: 2, maxDuration: 5m}
