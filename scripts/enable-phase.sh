@@ -18,7 +18,7 @@ done
 toggled=0
 for k in deploy/overlays/prod/kustomization.yaml deploy/overlays/dr/kustomization.yaml; do
   if grep -q "^#fase${N}# " "$k"; then
-    sed -i.bak "s/^#fase${N}# //" "$k" && rm -f "$k.bak"
+    sed -i.bak "s/^#fase${N}# /  /" "$k" && rm -f "$k.bak"
     echo "componente ligado em $k"
     toggled=$((toggled+1))
   fi
