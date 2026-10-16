@@ -76,11 +76,11 @@ status: ## Mapa do ambiente: clusters, borda, Argo CD (e em qual cluster ele rod
 # ---------------------------------------------------------------- fases 1-8
 .PHONY: dev dev-down images image-smoke images-load venv test lint slo-rules dashboard enable
 dev: ## App SEM Kubernetes (docker compose): auction:8001 bid:8002 settlement:8003
-	docker compose up --build -d
+	docker-compose up --build -d
 	@echo "teste rápido: veja docs/fase-1-app-ci.md"
 
 dev-down: ## Derruba o docker compose
-	docker compose down -v
+	docker-compose down -v
 
 images: ## Constrói as 3 imagens (docker build) com o nome que os manifests esperam
 	./scripts/build-images.sh build
