@@ -7,7 +7,7 @@ resources:
   - ../../base
 components:
   - ../../components/monitoring
-#fase4# - ../../components/canary-analysis
+  - ../../components/canary-analysis
 #fase5# - ../../components/autoscaling
 #fase7# - ../../components/network-policies
 #fase8# - ../../components/redis-expose
