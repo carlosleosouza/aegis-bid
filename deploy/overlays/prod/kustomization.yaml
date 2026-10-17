@@ -14,8 +14,8 @@ components:
 # O CI atualiza as tags abaixo (via PR). Os comentários "# tag:" são âncoras do sed.
 images:
   - name: ghcr.io/carlosleosouza/aegis-bid/auction
-    newTag: sha-87f3238 # tag:auction
+    newTag: sha-1b881ea # tag:auction
   - name: ghcr.io/carlosleosouza/aegis-bid/bid
-    newTag: sha-87f3238 # tag:bid
+    newTag: sha-1b881ea # tag:bid
   - name: ghcr.io/carlosleosouza/aegis-bid/settlement
-    newTag: sha-87f3238 # tag:settlement
+    newTag: sha-1b881ea # tag:settlement
